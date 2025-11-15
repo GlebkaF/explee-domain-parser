@@ -43,15 +43,15 @@ async function analyzeCompanyWithAI(htmlContent: string, domain: string): Promis
   } catch (error) {
     console.error('[AI] Ошибка при анализе:', error);
     
-    // Проверяем причину ошибки
+    // Проверяем причину ошибки и выбрасываем понятное исключение
     if (error instanceof Error) {
       if (error.message.includes('API key') || error.message.includes('apiKey') || error.message.includes('401')) {
-        return '❌ Ошибка: OpenAI API ключ не настроен. Добавьте OPENAI_API_KEY в .env файл.';
+        throw new Error('OpenAI API ключ не настроен. Добавьте OPENAI_API_KEY в .env файл.');
       }
-      return `❌ Ошибка AI: ${error.message}`;
+      throw new Error(`Ошибка AI: ${error.message}`);
     }
     
-    return '❌ Не удалось получить описание компании';
+    throw new Error('Не удалось получить описание компании');
   }
 }
 
