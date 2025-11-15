@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 
 interface Domain {
@@ -184,9 +184,8 @@ export default function DomainsTable({
                   const hasDescription = domain.status === 'completed' && domain.companyDescription;
 
                   return (
-                    <>
+                    <React.Fragment key={domain.id}>
                       <tr
-                        key={domain.id}
                         className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       >
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
@@ -279,7 +278,7 @@ export default function DomainsTable({
                           </td>
                         </tr>
                       )}
-                    </>
+                    </React.Fragment>
                   );
                 })}
               </tbody>
