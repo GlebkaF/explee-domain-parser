@@ -48,6 +48,14 @@ export async function POST(
       },
     });
 
+    // 🚀 Мгновенный триггер обработки (не ждем GitHub Actions)
+    // GitHub Actions и Vercel Cron работают как бэкап
+    fetch(`${request.nextUrl.origin}/api/cron/process-domains`, { 
+      method: 'GET' 
+    }).catch(() => {
+      // Игнорируем ошибки - это не критично
+    });
+
     return NextResponse.json({
       success: true,
       domain: updatedDomain,
