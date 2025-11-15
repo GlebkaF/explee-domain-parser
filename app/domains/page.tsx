@@ -10,6 +10,7 @@ interface Domain {
   domain: string;
   status: 'created' | 'queued' | 'running' | 'completed' | 'error';
   errorMessage: string | null;
+  companyDescription: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

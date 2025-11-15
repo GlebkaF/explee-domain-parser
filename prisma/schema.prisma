@@ -16,10 +16,11 @@ enum DomainStatus {
 }
 
 model Domain {
-  id           Int          @id @default(autoincrement())
-  domain       String       @unique
-  status       DomainStatus @default(created)
-  errorMessage String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  id                 Int          @id @default(autoincrement())
+  domain             String       @unique
+  status             DomainStatus @default(created)
+  errorMessage       String?
+  companyDescription String?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 }
