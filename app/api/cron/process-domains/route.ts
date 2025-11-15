@@ -1,23 +1,86 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-async function processDomain(domainId: number) {
+async function fetchDomainHtml(domain: string): Promise<string> {
   try {
+    // Пробуем с https
+    const httpsUrl = `https://${domain}`;
+    console.log(`[Cron] Попытка загрузки ${httpsUrl}`);
+    
+    const response = await fetch(httpsUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      },
+      redirect: 'follow',
+      signal: AbortSignal.timeout(30000), // 30 секунд таймаут
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const html = await response.text();
+    console.log(`[Cron] Успешно загружено ${html.length} символов`);
+    return html;
+  } catch (httpsError) {
+    // Если https не сработал, пробуем http
+    try {
+      const httpUrl = `http://${domain}`;
+      console.log(`[Cron] HTTPS не сработал, пробуем ${httpUrl}`);
+      
+      const response = await fetch(httpUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        },
+        redirect: 'follow',
+        signal: AbortSignal.timeout(30000),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const html = await response.text();
+      console.log(`[Cron] Успешно загружено через HTTP: ${html.length} символов`);
+      return html;
+    } catch (httpError) {
+      throw new Error(`Не удалось загрузить домен: ${httpsError instanceof Error ? httpsError.message : 'Unknown error'}`);
+    }
+  }
+}
+
+async function processDomain(domainId: number) {
+  let domainRecord;
+  
+  try {
+    // Получаем информацию о домене
+    domainRecord = await prisma.domain.findUnique({
+      where: { id: domainId },
+    });
+
+    if (!domainRecord) {
+      throw new Error('Домен не найден');
+    }
+
     // Ставим статус running
     await prisma.domain.update({
       where: { id: domainId },
       data: { status: 'running' },
     });
 
-    console.log(`[Cron] Обработка домена ID ${domainId} началась`);
+    console.log(`[Cron] Обработка домена ID ${domainId} (${domainRecord.domain}) началась`);
 
-    // Имитация обработки - ждем 5 секунд
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // Загружаем HTML контент
+    const htmlContent = await fetchDomainHtml(domainRecord.domain);
 
-    // Завершаем обработку
+    // Сохраняем результат
     await prisma.domain.update({
       where: { id: domainId },
-      data: { status: 'completed' },
+      data: { 
+        status: 'completed',
+        rawHtmlData: htmlContent,
+        errorMessage: null,
+      },
     });
 
     console.log(`[Cron] Домен ID ${domainId} успешно обработан`);

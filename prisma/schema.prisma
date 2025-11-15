@@ -20,6 +20,7 @@ model Domain {
   domain       String       @unique
   status       DomainStatus @default(created)
   errorMessage String?
+  rawHtmlData  String?      @db.Text
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 }

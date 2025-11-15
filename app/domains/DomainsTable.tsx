@@ -8,6 +8,7 @@ interface Domain {
   domain: string;
   status: 'created' | 'queued' | 'running' | 'completed' | 'error';
   errorMessage: string | null;
+  rawHtmlData: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -58,6 +59,19 @@ export default function DomainsTable({
   endIndex,
 }: DomainsTableProps) {
   const [loadingDomains, setLoadingDomains] = useState<Set<number>>(new Set());
+  const [expandedDomains, setExpandedDomains] = useState<Set<number>>(new Set());
+
+  const toggleExpanded = (domainId: number) => {
+    setExpandedDomains(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(domainId)) {
+        newSet.delete(domainId);
+      } else {
+        newSet.add(domainId);
+      }
+      return newSet;
+    });
+  };
 
   const handleRunAgent = async (domainId: number) => {
     setLoadingDomains(prev => new Set(prev).add(domainId));
@@ -166,65 +180,106 @@ export default function DomainsTable({
                   const statusConfig = STATUS_CONFIG[domain.status] || STATUS_CONFIG.created;
                   const isLoading = loadingDomains.has(domain.id);
                   const canRunAgent = domain.status === 'created';
+                  const isExpanded = expandedDomains.has(domain.id);
+                  const hasHtmlData = domain.status === 'completed' && domain.rawHtmlData;
 
                   return (
-                    <tr
-                      key={domain.id}
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {domain.id}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 dark:text-blue-400">
-                        <a
-                          href={`https://${domain.domain}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline"
-                        >
-                          {domain.domain}
-                        </a>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig.className}`}>
-                          <span className="mr-1">{statusConfig.icon}</span>
-                          {statusConfig.label}
-                        </span>
-                        {domain.errorMessage && (
-                          <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                            {domain.errorMessage}
-                          </p>
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
-                        {new Date(domain.createdAt).toLocaleString('ru-RU', {
-                          year: 'numeric',
-                          month: '2-digit',
-                          day: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {domain.status === 'running' || domain.status === 'error' ? (
-                          <button
-                            onClick={() => handleRestart(domain.id)}
-                            disabled={isLoading}
-                            className="px-3 py-1 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-medium rounded transition-colors"
+                    <>
+                      <tr
+                        key={domain.id}
+                        className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
+                          {domain.id}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600 dark:text-blue-400">
+                          <a
+                            href={`https://${domain.domain}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline"
                           >
-                            {isLoading ? '⏳ Перезапуск...' : '🔄 Перезапустить'}
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleRunAgent(domain.id)}
-                            disabled={!canRunAgent || isLoading}
-                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-medium rounded transition-colors"
-                          >
-                            {isLoading ? '⏳ Запуск...' : '🚀 Run Agent'}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
+                            {domain.domain}
+                          </a>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusConfig.className}`}>
+                              <span className="mr-1">{statusConfig.icon}</span>
+                              {statusConfig.label}
+                            </span>
+                            {hasHtmlData && (
+                              <button
+                                onClick={() => toggleExpanded(domain.id)}
+                                className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                              >
+                                {isExpanded ? '▼ Скрыть HTML' : '▶ Показать HTML'}
+                              </button>
+                            )}
+                          </div>
+                          {domain.errorMessage && (
+                            <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                              {domain.errorMessage}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                          {new Date(domain.createdAt).toLocaleString('ru-RU', {
+                            year: 'numeric',
+                            month: '2-digit',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          {domain.status === 'running' || domain.status === 'error' ? (
+                            <button
+                              onClick={() => handleRestart(domain.id)}
+                              disabled={isLoading}
+                              className="px-3 py-1 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-medium rounded transition-colors"
+                            >
+                              {isLoading ? '⏳ Перезапуск...' : '🔄 Перезапустить'}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleRunAgent(domain.id)}
+                              disabled={!canRunAgent || isLoading}
+                              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-medium rounded transition-colors"
+                            >
+                              {isLoading ? '⏳ Запуск...' : '🚀 Run Agent'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                      {isExpanded && hasHtmlData && (
+                        <tr key={`${domain.id}-html`}>
+                          <td colSpan={5} className="px-6 py-4 bg-gray-50 dark:bg-gray-900">
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
+                                  📄 Raw HTML Data ({domain.rawHtmlData?.length.toLocaleString()} символов)
+                                </h4>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(domain.rawHtmlData || '');
+                                    alert('HTML скопирован в буфер обмена!');
+                                  }}
+                                  className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
+                                >
+                                  📋 Копировать
+                                </button>
+                              </div>
+                              <div className="max-h-96 overflow-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                <pre className="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
+                                  {domain.rawHtmlData}
+                                </pre>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   );
                 })}
               </tbody>
