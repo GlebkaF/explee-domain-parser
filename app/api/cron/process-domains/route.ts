@@ -43,7 +43,7 @@ async function fetchDomainHtml(domain: string): Promise<string> {
       const html = await response.text();
       console.log(`[Cron] Успешно загружено через HTTP: ${html.length} символов`);
       return html;
-    } catch (httpError) {
+    } catch {
       throw new Error(`Не удалось загрузить домен: ${httpsError instanceof Error ? httpsError.message : 'Unknown error'}`);
     }
   }
@@ -71,7 +71,17 @@ async function processDomain(domainId: number) {
     console.log(`[Cron] Обработка домена ID ${domainId} (${domainRecord.domain}) началась`);
 
     // Загружаем HTML контент
-    const htmlContent = await fetchDomainHtml(domainRecord.domain);
+    let htmlContent = await fetchDomainHtml(domainRecord.domain);
+
+    // Ограничиваем размер HTML (максимум 500KB для надежности)
+    const MAX_HTML_SIZE = 500 * 1024; // 500KB
+    if (htmlContent.length > MAX_HTML_SIZE) {
+      console.log(`[Cron] HTML слишком большой (${htmlContent.length} символов), обрезаем до ${MAX_HTML_SIZE}`);
+      htmlContent = htmlContent.substring(0, MAX_HTML_SIZE) + '\n\n... [HTML обрезан, слишком большой]';
+    }
+
+    // Очищаем null bytes и другие проблемные символы
+    htmlContent = htmlContent.replace(/\0/g, '');
 
     // Сохраняем результат
     await prisma.domain.update({
@@ -88,14 +98,45 @@ async function processDomain(domainId: number) {
   } catch (error) {
     console.error(`[Cron] Ошибка при обработке домена ID ${domainId}:`, error);
     
+    // Извлекаем только суть ошибки (максимум 300 символов)
+    let errorMessage = 'Неизвестная ошибка';
+    
+    if (error instanceof Error) {
+      // Берем только сообщение, без стека
+      let msg = error.message;
+      
+      // Если это Prisma ошибка, очищаем от технических деталей
+      if (msg.includes('Invalid') && msg.includes('invocation')) {
+        // Извлекаем только важную часть
+        const lines = msg.split('\n');
+        const relevantLines = lines.filter(line => 
+          !line.includes('TURBOPACK') && 
+          !line.includes('__imported__') &&
+          !line.includes('.js:') &&
+          line.trim().length > 0
+        );
+        msg = relevantLines.slice(0, 3).join(' ').substring(0, 300);
+      } else {
+        msg = msg.substring(0, 300);
+      }
+      
+      errorMessage = msg;
+    } else if (typeof error === 'string') {
+      errorMessage = error.substring(0, 300);
+    }
+    
     // При ошибке ставим статус error
-    await prisma.domain.update({
-      where: { id: domainId },
-      data: { 
-        status: 'error',
-        errorMessage: error instanceof Error ? error.message : 'Неизвестная ошибка'
-      },
-    });
+    try {
+      await prisma.domain.update({
+        where: { id: domainId },
+        data: { 
+          status: 'error',
+          errorMessage: errorMessage
+        },
+      });
+    } catch (updateError) {
+      console.error(`[Cron] Не удалось обновить статус домена:`, updateError);
+    }
 
     return { success: false, domainId, error };
   }
