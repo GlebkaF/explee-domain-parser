@@ -71,24 +71,24 @@ async function processDomain(domainId: number) {
     console.log(`[Cron] Обработка домена ID ${domainId} (${domainRecord.domain}) началась`);
 
     // Загружаем HTML контент
-    let htmlContent = await fetchDomainHtml(domainRecord.domain);
+    const htmlContent = await fetchDomainHtml(domainRecord.domain);
 
-    // Ограничиваем размер HTML (максимум 500KB для надежности)
-    const MAX_HTML_SIZE = 500 * 1024; // 500KB
-    if (htmlContent.length > MAX_HTML_SIZE) {
-      console.log(`[Cron] HTML слишком большой (${htmlContent.length} символов), обрезаем до ${MAX_HTML_SIZE}`);
-      htmlContent = htmlContent.substring(0, MAX_HTML_SIZE) + '\n\n... [HTML обрезан, слишком большой]';
-    }
+    // Берем первые 100 символов HTML как описание компании (временно)
+    // TODO: В следующем слайсе заменим на реальный AI анализ
+    const companyDescription = htmlContent
+      .replace(/<[^>]*>/g, '') // Удаляем HTML теги
+      .replace(/\s+/g, ' ') // Заменяем множественные пробелы на один
+      .trim()
+      .substring(0, 100);
 
-    // Очищаем null bytes и другие проблемные символы
-    htmlContent = htmlContent.replace(/\0/g, '');
+    console.log(`[Cron] Первые 100 символов: "${companyDescription}"`);
 
     // Сохраняем результат
     await prisma.domain.update({
       where: { id: domainId },
       data: { 
         status: 'completed',
-        rawHtmlData: htmlContent,
+        companyDescription: companyDescription || 'Нет описания',
         errorMessage: null,
       },
     });

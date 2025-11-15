@@ -8,7 +8,7 @@ interface Domain {
   domain: string;
   status: 'created' | 'queued' | 'running' | 'completed' | 'error';
   errorMessage: string | null;
-  rawHtmlData: string | null;
+  companyDescription: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -181,7 +181,7 @@ export default function DomainsTable({
                   const isLoading = loadingDomains.has(domain.id);
                   const canRunAgent = domain.status === 'created';
                   const isExpanded = expandedDomains.has(domain.id);
-                  const hasHtmlData = domain.status === 'completed' && domain.rawHtmlData;
+                  const hasDescription = domain.status === 'completed' && domain.companyDescription;
 
                   return (
                     <>
@@ -208,12 +208,12 @@ export default function DomainsTable({
                               <span className="mr-1">{statusConfig.icon}</span>
                               {statusConfig.label}
                             </span>
-                            {hasHtmlData && (
+                            {hasDescription && (
                               <button
                                 onClick={() => toggleExpanded(domain.id)}
                                 className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                               >
-                                {isExpanded ? '▼ Скрыть HTML' : '▶ Показать HTML'}
+                                {isExpanded ? '▼ Скрыть описание' : '▶ Показать описание'}
                               </button>
                             )}
                           </div>
@@ -252,28 +252,28 @@ export default function DomainsTable({
                           )}
                         </td>
                       </tr>
-                      {isExpanded && hasHtmlData && (
-                        <tr key={`${domain.id}-html`}>
+                      {isExpanded && hasDescription && (
+                        <tr key={`${domain.id}-description`}>
                           <td colSpan={5} className="px-6 py-4 bg-gray-50 dark:bg-gray-900">
                             <div className="space-y-2">
                               <div className="flex items-center justify-between">
                                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-                                  📄 Raw HTML Data ({domain.rawHtmlData?.length.toLocaleString()} символов)
+                                  🏢 Описание компании
                                 </h4>
                                 <button
                                   onClick={() => {
-                                    navigator.clipboard.writeText(domain.rawHtmlData || '');
-                                    alert('HTML скопирован в буфер обмена!');
+                                    navigator.clipboard.writeText(domain.companyDescription || '');
+                                    alert('Описание скопировано в буфер обмена!');
                                   }}
                                   className="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded"
                                 >
                                   📋 Копировать
                                 </button>
                               </div>
-                              <div className="max-h-96 overflow-auto bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                                <pre className="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words">
-                                  {domain.rawHtmlData}
-                                </pre>
+                              <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                                <p className="text-sm text-gray-800 dark:text-gray-200">
+                                  {domain.companyDescription}
+                                </p>
                               </div>
                             </div>
                           </td>
