@@ -90,6 +90,36 @@ export default function DomainsTable({
     }
   };
 
+  const handleRestart = async (domainId: number) => {
+    setLoadingDomains(prev => new Set(prev).add(domainId));
+
+    try {
+      const response = await fetch(`/api/domains/${domainId}/restart`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Обновляем локальное состояние
+        setLocalDomains(prev =>
+          prev.map(d => (d.id === domainId ? { ...d, status: 'queued', errorMessage: null } : d))
+        );
+      } else {
+        alert(data.error || 'Ошибка при перезапуске');
+      }
+    } catch (error) {
+      console.error('Error restarting:', error);
+      alert('Ошибка при перезапуске');
+    } finally {
+      setLoadingDomains(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(domainId);
+        return newSet;
+      });
+    }
+  };
+
   const hasPrevPage = page > 1;
   const hasNextPage = page < totalPages;
 
@@ -187,13 +217,23 @@ export default function DomainsTable({
                         })}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => handleRunAgent(domain.id)}
-                          disabled={!canRunAgent || isLoading}
-                          className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-medium rounded transition-colors"
-                        >
-                          {isLoading ? '⏳ Запуск...' : '🚀 Run Agent'}
-                        </button>
+                        {domain.status === 'running' || domain.status === 'error' ? (
+                          <button
+                            onClick={() => handleRestart(domain.id)}
+                            disabled={isLoading}
+                            className="px-3 py-1 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-medium rounded transition-colors"
+                          >
+                            {isLoading ? '⏳ Перезапуск...' : '🔄 Перезапустить'}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleRunAgent(domain.id)}
+                            disabled={!canRunAgent || isLoading}
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-medium rounded transition-colors"
+                          >
+                            {isLoading ? '⏳ Запуск...' : '🚀 Run Agent'}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

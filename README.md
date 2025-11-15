@@ -83,11 +83,11 @@
 - Пагинация  
 - Кнопка «Run agent»  
 
-## Slice 3 — Cron endpoint + sync stub-agent
-- `/api/cron/run-agent`
+## Slice 3 — Cron endpoint + sync stub-agent ✅
+- `/api/cron/process-domains`
 - Выбор доменов со статусом `queued`
-- Синхронный фейковый агент  
-- Логика смены статусов  
+- Синхронный фейковый агент (5 секунд обработки)
+- Логика смены статусов: `queued → running → completed`  
 
 ## Slice 4 — Агент v1: сбор HTML
 - Запрос к домену  
