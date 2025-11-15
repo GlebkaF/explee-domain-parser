@@ -1,5 +1,59 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import OpenAI from 'openai';
+
+// Инициализируем OpenAI клиент
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+async function analyzeCompanyWithAI(htmlContent: string, domain: string): Promise<string> {
+  try {
+    // Берем первые 4000 символов HTML для анализа (чтобы не превысить лимиты токенов)
+    const htmlSnippet = htmlContent
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Удаляем скрипты
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '') // Удаляем стили
+      .replace(/<[^>]+>/g, ' ') // Удаляем HTML теги
+      .replace(/\s+/g, ' ') // Убираем лишние пробелы
+      .trim()
+      .substring(0, 4000);
+
+    console.log(`[AI] Анализируем ${domain}, отправляем ${htmlSnippet.length} символов в AI`);
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'Ты - эксперт по анализу компаний. Твоя задача - кратко описать чем занимается компания в одном предложении на русском языке, основываясь на содержимом их сайта.',
+        },
+        {
+          role: 'user',
+          content: `Проанализируй содержимое сайта ${domain} и опиши в одном предложении чем занимается эта компания:\n\n${htmlSnippet}`,
+        },
+      ],
+      max_tokens: 150,
+      temperature: 0.7,
+    });
+
+    const description = completion.choices[0]?.message?.content?.trim() || 'Нет описания';
+    console.log(`[AI] Получен ответ: "${description}"`);
+    
+    return description;
+  } catch (error) {
+    console.error('[AI] Ошибка при анализе:', error);
+    
+    // Проверяем причину ошибки
+    if (error instanceof Error) {
+      if (error.message.includes('API key') || error.message.includes('apiKey') || error.message.includes('401')) {
+        return '❌ Ошибка: OpenAI API ключ не настроен. Добавьте OPENAI_API_KEY в .env файл.';
+      }
+      return `❌ Ошибка AI: ${error.message}`;
+    }
+    
+    return '❌ Не удалось получить описание компании';
+  }
+}
 
 async function fetchDomainHtml(domain: string): Promise<string> {
   try {
@@ -73,15 +127,10 @@ async function processDomain(domainId: number) {
     // Загружаем HTML контент
     const htmlContent = await fetchDomainHtml(domainRecord.domain);
 
-    // Берем первые 100 символов HTML как описание компании (временно)
-    // TODO: В следующем слайсе заменим на реальный AI анализ
-    const companyDescription = htmlContent
-      .replace(/<[^>]*>/g, '') // Удаляем HTML теги
-      .replace(/\s+/g, ' ') // Заменяем множественные пробелы на один
-      .trim()
-      .substring(0, 100);
+    // Анализируем с помощью AI
+    const companyDescription = await analyzeCompanyWithAI(htmlContent, domainRecord.domain);
 
-    console.log(`[Cron] Первые 100 символов: "${companyDescription}"`);
+    console.log(`[Cron] Описание компании: "${companyDescription}"`);
 
     // Сохраняем результат
     await prisma.domain.update({
