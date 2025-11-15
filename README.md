@@ -87,7 +87,9 @@
 - `/api/cron/process-domains`
 - Выбор доменов со статусом `queued`
 - Синхронный фейковый агент (5 секунд обработки)
-- Логика смены статусов: `queued → running → completed`  
+- Логика смены статусов: `queued → running → completed`
+- **GitHub Actions Cron**: обработка каждую минуту (бесплатно)
+- Vercel Cron настроен как резерв (раз в день)  
 
 ## Slice 4 — Агент v1: сбор HTML
 - Запрос к домену  
