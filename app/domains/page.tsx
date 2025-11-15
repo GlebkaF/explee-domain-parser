@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import DomainsTable from './DomainsTable';
@@ -14,7 +14,7 @@ interface Domain {
   updatedAt: Date;
 }
 
-export default function DomainsPage() {
+function DomainsContent() {
   const searchParams = useSearchParams();
   const page = Number(searchParams.get('page')) || 1;
   
@@ -109,5 +109,24 @@ export default function DomainsPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function DomainsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4">
+        <main className="max-w-6xl mx-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-8">
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">Загрузка...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    }>
+      <DomainsContent />
+    </Suspense>
   );
 }
