@@ -7,8 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum DomainStatus {
+  created
+  queued
+  running
+  completed
+  error
+}
+
 model Domain {
-  id        Int      @id @default(autoincrement())
-  domain    String   @unique
-  createdAt DateTime @default(now())
+  id           Int          @id @default(autoincrement())
+  domain       String       @unique
+  status       DomainStatus @default(created)
+  errorMessage String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 }

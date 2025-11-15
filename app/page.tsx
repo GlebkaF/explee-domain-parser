@@ -118,7 +118,7 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-2xl">⏳</span>
+                  <span className="text-2xl">✅</span>
                   <div>
                     <span className="font-medium text-gray-900 dark:text-white">Slice 2.2:</span>
                     <span className="text-gray-600 dark:text-gray-400 ml-2">Статусы + кнопка запуска агента</span>
@@ -160,10 +160,21 @@ export default function Home() {
                 💾 Текущая модель данных
               </h3>
               <pre className="bg-gray-900 text-gray-100 p-4 rounded overflow-x-auto text-sm">
-{`model Domain {
-  id        Int      @id @default(autoincrement())
-  domain    String   @unique
-  createdAt DateTime @default(now())
+{`enum DomainStatus {
+  created
+  queued
+  running
+  completed
+  error
+}
+
+model Domain {
+  id           Int          @id @default(autoincrement())
+  domain       String       @unique
+  status       DomainStatus @default(created)
+  errorMessage String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 }`}
               </pre>
             </section>
