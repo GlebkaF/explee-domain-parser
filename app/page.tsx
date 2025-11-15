@@ -1,4 +1,37 @@
+'use client';
+
+import Link from 'next/link';
+import { useState } from 'react';
+
 export default function Home() {
+  const [clearing, setClearing] = useState(false);
+  const [clearResult, setClearResult] = useState<{ success: boolean; message: string; deletedCount?: number } | null>(null);
+
+  const handleClearDatabase = async () => {
+    if (!confirm('⚠️ Вы уверены, что хотите удалить ВСЕ домены из базы данных? Это действие необратимо!')) {
+      return;
+    }
+
+    setClearing(true);
+    setClearResult(null);
+
+    try {
+      const response = await fetch('/api/domains/clear', {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+      setClearResult(data);
+    } catch {
+      setClearResult({
+        success: false,
+        message: 'Ошибка при очистке базы данных',
+      });
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4">
       <main className="max-w-4xl mx-auto">
@@ -10,57 +43,103 @@ export default function Home() {
             Прототип обработки CSV с доменами компаний
           </p>
 
-          <div className="bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500 p-4 mb-8">
-            <h2 className="text-xl font-semibold text-blue-900 dark:text-blue-100 mb-2">
-              ✅ Slice 0 — Bootstrap завершен!
+          <div className="bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500 p-4 mb-8">
+            <h2 className="text-xl font-semibold text-green-900 dark:text-green-100 mb-2">
+              ✅ Slice 1 — Импорт CSV готов!
             </h2>
-            <p className="text-blue-800 dark:text-blue-200">
-              Инфраструктура настроена: Prisma, PostgreSQL, Health Check
+            <p className="text-green-800 dark:text-green-200">
+              Загрузите CSV файл с доменами для импорта в базу данных
             </p>
           </div>
 
+          {/* Навигация */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <Link
+              href="/upload"
+              className="flex items-center justify-between p-6 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 rounded-lg transition-colors group"
+            >
+              <div>
+                <h3 className="text-xl font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                  📤 Загрузка CSV
+                </h3>
+                <p className="text-blue-700 dark:text-blue-300 text-sm">
+                  Импортировать домены из CSV файла
+                </p>
+              </div>
+              <svg className="w-6 h-6 text-blue-600 dark:text-blue-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+
+            <div className="flex items-center justify-between p-6 bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-700 rounded-lg opacity-50">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                  📋 Список доменов
+                </h3>
+                <p className="text-gray-500 dark:text-gray-500 text-sm">
+                  Скоро... (Slice 2)
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Прогресс разработки */}
           <div className="space-y-6">
             <section>
               <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                📋 Инструкции по настройке
+                🚀 Прогресс разработки
               </h2>
-              <ol className="list-decimal list-inside space-y-2 text-gray-700 dark:text-gray-300">
-                <li>Создайте PostgreSQL базу данных на <a href="https://neon.tech" target="_blank" rel="noopener" className="text-blue-600 hover:underline">Neon.tech</a></li>
-                <li>Скопируйте <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">env.example</code> в <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">.env</code></li>
-                <li>Вставьте ваш <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">DATABASE_URL</code> из Neon</li>
-                <li>Выполните миграцию: <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">npx prisma migrate dev --name init</code></li>
-                <li>Запустите сервер: <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">npm run dev</code></li>
-              </ol>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                🔍 Проверка работоспособности
-              </h2>
-              <a
-                href="/api/health/db"
-                target="_blank"
-                className="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
-              >
-                Проверить подключение к БД
-              </a>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                Эндпоинт должен вернуть статус подключения и количество доменов
-              </p>
-            </section>
-
-            <section>
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                📦 Что дальше?
-              </h2>
-              <ul className="list-disc list-inside space-y-2 text-gray-700 dark:text-gray-300">
-                <li><strong>Slice 1:</strong> Импорт CSV → PostgreSQL</li>
-                <li><strong>Slice 2:</strong> Пагинация + статусы + кнопка запуска агента</li>
-                <li><strong>Slice 3:</strong> Cron endpoint + stub-agent</li>
-                <li><strong>Slice 4:</strong> Агент v1 — сбор HTML</li>
-                <li><strong>Slice 5:</strong> Агент v2 — LLM summary</li>
-                <li><strong>Slice 6:</strong> UI улучшения</li>
-              </ul>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">✅</span>
+                  <div>
+                    <span className="font-medium text-gray-900 dark:text-white">Slice 0:</span>
+                    <span className="text-gray-600 dark:text-gray-400 ml-2">Bootstrap проекта — Prisma, PostgreSQL, Health Check</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">✅</span>
+                  <div>
+                    <span className="font-medium text-gray-900 dark:text-white">Slice 1:</span>
+                    <span className="text-gray-600 dark:text-gray-400 ml-2">Импорт CSV → PostgreSQL</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">⏳</span>
+                  <div>
+                    <span className="font-medium text-gray-900 dark:text-white">Slice 2:</span>
+                    <span className="text-gray-600 dark:text-gray-400 ml-2">Пагинация + статусы + кнопка запуска агента</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">⏳</span>
+                  <div>
+                    <span className="font-medium text-gray-900 dark:text-white">Slice 3:</span>
+                    <span className="text-gray-600 dark:text-gray-400 ml-2">Cron endpoint + stub-agent</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">⏳</span>
+                  <div>
+                    <span className="font-medium text-gray-900 dark:text-white">Slice 4:</span>
+                    <span className="text-gray-600 dark:text-gray-400 ml-2">Агент v1 — сбор HTML</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">⏳</span>
+                  <div>
+                    <span className="font-medium text-gray-900 dark:text-white">Slice 5:</span>
+                    <span className="text-gray-600 dark:text-gray-400 ml-2">Агент v2 — LLM summary</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">⏳</span>
+                  <div>
+                    <span className="font-medium text-gray-900 dark:text-white">Slice 6:</span>
+                    <span className="text-gray-600 dark:text-gray-400 ml-2">UI улучшения</span>
+                  </div>
+                </div>
+              </div>
             </section>
 
             <section className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
@@ -75,6 +154,48 @@ export default function Home() {
 }`}
               </pre>
             </section>
+          </div>
+
+          {/* Health Check & Database Management */}
+          <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
+            <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+              🔧 Управление базой данных
+            </h2>
+            
+            <div className="flex flex-wrap gap-4 mb-4">
+              <a
+                href="/api/health/db"
+                target="_blank"
+                className="inline-flex items-center px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors"
+              >
+                🔍 Проверить подключение к БД
+              </a>
+              
+              <button
+                onClick={handleClearDatabase}
+                disabled={clearing}
+                className="inline-flex items-center px-6 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+              >
+                {clearing ? '⏳ Очистка...' : '🗑️ Очистить БД'}
+              </button>
+            </div>
+
+            {clearResult && (
+              <div className={`mt-4 p-4 rounded-lg ${
+                clearResult.success 
+                  ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800' 
+                  : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800'
+              }`}>
+                <p className={clearResult.success ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}>
+                  {clearResult.success ? '✅' : '❌'} {clearResult.message}
+                  {clearResult.deletedCount !== undefined && ` (удалено доменов: ${clearResult.deletedCount})`}
+                </p>
+              </div>
+            )}
+
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              ⚠️ Очистка БД удалит все домены без возможности восстановления
+            </p>
           </div>
         </div>
       </main>
