@@ -1,48 +1,69 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { prisma } from '@/lib/prisma';
 import DomainsTable from './DomainsTable';
 
-interface SearchParams {
-  page?: string;
+interface Domain {
+  id: number;
+  domain: string;
+  status: 'created' | 'queued' | 'running' | 'completed' | 'error';
+  errorMessage: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-export default async function DomainsPage({
-  searchParams,
-}: {
-  searchParams: Promise<SearchParams>;
-}) {
-  const params = await searchParams;
-  const page = Number(params.page) || 1;
-  const limit = 10;
-  const skip = (page - 1) * limit;
+export default function DomainsPage() {
+  const searchParams = useSearchParams();
+  const page = Number(searchParams.get('page')) || 1;
+  
+  const [data, setData] = useState<{
+    domains: Domain[];
+    total: number;
+    totalPages: number;
+    startIndex: number;
+    endIndex: number;
+  } | null>(null);
+  
+  const [loading, setLoading] = useState(true);
 
-  // Получаем домены и общее количество параллельно
-  const [domains, total] = await Promise.all([
-    prisma.domain.findMany({
-      skip,
-      take: limit,
-      orderBy: { id: 'desc' },
-    }),
-    prisma.domain.count(),
-  ]);
+  // Функция загрузки данных
+  const loadData = async () => {
+    try {
+      const response = await fetch(`/api/domains/list?page=${page}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setData({
+          domains: result.domains,
+          total: result.total,
+          totalPages: result.totalPages,
+          startIndex: result.startIndex,
+          endIndex: result.endIndex,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading domains:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const totalPages = Math.ceil(total / limit);
-  const startIndex = skip + 1;
-  const endIndex = Math.min(skip + limit, total);
+  // Начальная загрузка и поллинг
+  useEffect(() => {
+    // Начальная загрузка
+    setLoading(true);
+    loadData();
 
-  // Преобразуем даты для клиентского компонента
-  const serializedDomains = domains.map((domain: {
-    id: number;
-    domain: string;
-    status: 'created' | 'queued' | 'running' | 'completed' | 'error';
-    errorMessage: string | null;
-    createdAt: Date;
-    updatedAt: Date;
-  }) => ({
-    ...domain,
-    createdAt: domain.createdAt,
-    updatedAt: domain.updatedAt,
-  }));
+    // Поллинг каждые 3 секунды
+    const interval = setInterval(() => {
+      loadData();
+    }, 3000);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 py-12 px-4">
@@ -59,19 +80,32 @@ export default async function DomainsPage({
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
               📋 Список доменов
             </h1>
-            <p className="text-lg text-gray-600 dark:text-gray-300">
-              Всего доменов в базе: <span className="font-semibold">{total}</span>
-            </p>
+            {data && (
+              <p className="text-lg text-gray-600 dark:text-gray-300">
+                Всего доменов в базе: <span className="font-semibold">{data.total}</span>
+              </p>
+            )}
           </div>
 
-          <DomainsTable
-            domains={serializedDomains}
-            page={page}
-            totalPages={totalPages}
-            total={total}
-            startIndex={startIndex}
-            endIndex={endIndex}
-          />
+          {loading && !data ? (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <p className="mt-4 text-gray-600 dark:text-gray-400">Загрузка...</p>
+            </div>
+          ) : data ? (
+            <DomainsTable
+              domains={data.domains}
+              page={page}
+              totalPages={data.totalPages}
+              total={data.total}
+              startIndex={data.startIndex}
+              endIndex={data.endIndex}
+            />
+          ) : (
+            <div className="text-center py-12 text-red-600">
+              Ошибка загрузки данных
+            </div>
+          )}
         </div>
       </main>
     </div>

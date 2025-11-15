@@ -58,7 +58,6 @@ export default function DomainsTable({
   endIndex,
 }: DomainsTableProps) {
   const [loadingDomains, setLoadingDomains] = useState<Set<number>>(new Set());
-  const [localDomains, setLocalDomains] = useState(domains);
 
   const handleRunAgent = async (domainId: number) => {
     setLoadingDomains(prev => new Set(prev).add(domainId));
@@ -70,12 +69,7 @@ export default function DomainsTable({
 
       const data = await response.json();
 
-      if (data.success) {
-        // Обновляем локальное состояние
-        setLocalDomains(prev =>
-          prev.map(d => (d.id === domainId ? { ...d, status: 'queued' } : d))
-        );
-      } else {
+      if (!data.success) {
         alert(data.error || 'Ошибка при запуске агента');
       }
     } catch (error) {
@@ -100,12 +94,7 @@ export default function DomainsTable({
 
       const data = await response.json();
 
-      if (data.success) {
-        // Обновляем локальное состояние
-        setLocalDomains(prev =>
-          prev.map(d => (d.id === domainId ? { ...d, status: 'queued', errorMessage: null } : d))
-        );
-      } else {
+      if (!data.success) {
         alert(data.error || 'Ошибка при перезапуске');
       }
     } catch (error) {
@@ -173,7 +162,7 @@ export default function DomainsTable({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {localDomains.map((domain) => {
+                {domains.map((domain) => {
                   const statusConfig = STATUS_CONFIG[domain.status] || STATUS_CONFIG.created;
                   const isLoading = loadingDomains.has(domain.id);
                   const canRunAgent = domain.status === 'created';
