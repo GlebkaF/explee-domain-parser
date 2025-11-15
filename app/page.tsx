@@ -71,16 +71,22 @@ export default function Home() {
               </svg>
             </Link>
 
-            <div className="flex items-center justify-between p-6 bg-gray-50 dark:bg-gray-700/30 border border-gray-200 dark:border-gray-700 rounded-lg opacity-50">
+            <Link
+              href="/domains"
+              className="flex items-center justify-between p-6 bg-green-50 hover:bg-green-100 dark:bg-green-900/30 dark:hover:bg-green-900/50 border border-green-200 dark:border-green-800 rounded-lg transition-colors group"
+            >
               <div>
-                <h3 className="text-xl font-semibold text-gray-600 dark:text-gray-400 mb-2">
+                <h3 className="text-xl font-semibold text-green-900 dark:text-green-100 mb-2">
                   📋 Список доменов
                 </h3>
-                <p className="text-gray-500 dark:text-gray-500 text-sm">
-                  Скоро... (Slice 2)
+                <p className="text-green-700 dark:text-green-300 text-sm">
+                  Просмотр всех доменов с пагинацией
                 </p>
               </div>
-            </div>
+              <svg className="w-6 h-6 text-green-600 dark:text-green-400 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
           </div>
 
           {/* Прогресс разработки */}
@@ -105,10 +111,17 @@ export default function Home() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
+                  <span className="text-2xl">✅</span>
+                  <div>
+                    <span className="font-medium text-gray-900 dark:text-white">Slice 2.1:</span>
+                    <span className="text-gray-600 dark:text-gray-400 ml-2">Вывод доменов с пагинацией</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
                   <span className="text-2xl">⏳</span>
                   <div>
-                    <span className="font-medium text-gray-900 dark:text-white">Slice 2:</span>
-                    <span className="text-gray-600 dark:text-gray-400 ml-2">Пагинация + статусы + кнопка запуска агента</span>
+                    <span className="font-medium text-gray-900 dark:text-white">Slice 2.2:</span>
+                    <span className="text-gray-600 dark:text-gray-400 ml-2">Статусы + кнопка запуска агента</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
