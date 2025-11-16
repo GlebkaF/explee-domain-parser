@@ -73,8 +73,20 @@ async function fetchDomainHtml(domain: string): Promise<string> {
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
+    // Проверяем Content-Type
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('text/html') && !contentType.includes('text/plain')) {
+      throw new Error(`Неверный Content-Type: ${contentType}. Ожидается HTML`);
+    }
+
     const html = await response.text();
     console.log(`[Cron] Успешно загружено ${html.length} символов`);
+    
+    // Проверяем, что HTML не пустой и имеет минимальную длину
+    if (!html || html.trim().length < 100) {
+      throw new Error(`Получен пустой или слишком короткий контент (${html.length} символов)`);
+    }
+    
     return html;
   } catch (httpsError) {
     // Если https не сработал, пробуем http
@@ -94,8 +106,20 @@ async function fetchDomainHtml(domain: string): Promise<string> {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
 
+      // Проверяем Content-Type
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('text/html') && !contentType.includes('text/plain')) {
+        throw new Error(`Неверный Content-Type: ${contentType}. Ожидается HTML`);
+      }
+
       const html = await response.text();
       console.log(`[Cron] Успешно загружено через HTTP: ${html.length} символов`);
+      
+      // Проверяем, что HTML не пустой и имеет минимальную длину
+      if (!html || html.trim().length < 100) {
+        throw new Error(`Получен пустой или слишком короткий контент (${html.length} символов)`);
+      }
+      
       return html;
     } catch {
       throw new Error(`Не удалось загрузить домен: ${httpsError instanceof Error ? httpsError.message : 'Unknown error'}`);
@@ -126,6 +150,19 @@ async function processDomain(domainId: number) {
 
     // Загружаем HTML контент
     const htmlContent = await fetchDomainHtml(domainRecord.domain);
+
+    // Очищаем HTML для проверки наличия текстового контента
+    const cleanedText = htmlContent
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Удаляем скрипты
+      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, '') // Удаляем стили
+      .replace(/<[^>]+>/g, ' ') // Удаляем HTML теги
+      .replace(/\s+/g, ' ') // Убираем лишние пробелы
+      .trim();
+
+    // Если текстового контента недостаточно, завершаем с ошибкой
+    if (!cleanedText || cleanedText.length < 50) {
+      throw new Error('Недостаточно текстового контента на странице для анализа');
+    }
 
     // Анализируем с помощью AI
     const companyDescription = await analyzeCompanyWithAI(htmlContent, domainRecord.domain);
