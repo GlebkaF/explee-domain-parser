@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { error } from 'console';
 
 export async function POST(
   request: NextRequest,
@@ -48,12 +49,11 @@ export async function POST(
       },
     });
 
-    // 🚀 Мгновенный триггер обработки (не ждем GitHub Actions)
-    // GitHub Actions и Vercel Cron работают как бэкап
+    // Принудительный запуск "крона" обработки очерели, это нужно потом что все бесплатные кроны работают как попало, такой "хак"
     fetch(`${request.nextUrl.origin}/api/cron/process-domains`, { 
       method: 'GET' 
-    }).catch(() => {
-      // Игнорируем ошибки - это не критично
+    }).catch((error) => {
+      console.log(error)
     });
 
     return NextResponse.json({
