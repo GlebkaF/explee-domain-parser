@@ -191,7 +191,7 @@ async function processDomain(domainId: number) {
   }
 }
 
-export async function GET() {
+async function processQueue() {
   try {
     console.log('[Cron] Запуск обработки доменов...');
 
@@ -219,6 +219,7 @@ export async function GET() {
         ? `Домен ${queuedDomain.domain} успешно обработан` 
         : `Ошибка при обработке домена ${queuedDomain.domain}`,
       processed: 1,
+      processedCount: 1,
       domain: queuedDomain.domain,
     });
   } catch (error) {
@@ -232,6 +233,14 @@ export async function GET() {
       { status: 500 }
     );
   }
+}
+
+export async function GET() {
+  return processQueue();
+}
+
+export async function POST() {
+  return processQueue();
 }
 
 // Защита от несанкционированных запросов (опционально)

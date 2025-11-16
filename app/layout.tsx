@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
-import { ColorSchemeScript, MantineProvider } from '@mantine/core';
+import { MantineProvider } from '@mantine/core';
 import { ModalsProvider } from '@mantine/modals';
 import { Notifications } from '@mantine/notifications';
 
@@ -29,13 +29,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru">
-      <head>
-        <ColorSchemeScript defaultColorScheme="light" />
-      </head>
+      <head />
       <body
         className={`${geistSans.variable} ${geistMono.variable}`}
       >
-        <MantineProvider defaultColorScheme="light">
+        <MantineProvider forceColorScheme="light">
           <ModalsProvider>
             <Notifications />
             {children}
