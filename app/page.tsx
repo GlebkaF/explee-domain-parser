@@ -97,7 +97,7 @@ function HomeContent() {
       } else {
         notifications.show({
           title: 'Ошибка',
-          message: result.error || 'Ошибка при обработке',
+          message: result.message || 'Ошибка при обработке',
           color: 'red',
         });
       }
