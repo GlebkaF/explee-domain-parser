@@ -7,6 +7,11 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Пропускаем крон-роут (Vercel Cron уже защищен на уровне платформы)
+  if (request.nextUrl.pathname === '/api/cron/process-domains') {
+    return NextResponse.next();
+  }
+
   const validPassword = process.env.AUTH_PASSWORD;
 
   if (!validPassword) {
