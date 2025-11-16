@@ -30,9 +30,9 @@ function DomainsContent() {
   const [loading, setLoading] = useState(true);
 
   // Функция загрузки данных
-  const loadData = async () => {
+  const loadData = async (signal?: AbortSignal) => {
     try {
-      const response = await fetch(`/api/domains/list?page=${page}`);
+      const response = await fetch(`/api/domains/list?page=${page}`, { signal });
       const result = await response.json();
       
       if (result.success) {
@@ -45,6 +45,10 @@ function DomainsContent() {
         });
       }
     } catch (error) {
+      // Игнорируем ошибки отмены запроса
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
       console.error('Error loading domains:', error);
     } finally {
       setLoading(false);
@@ -53,17 +57,23 @@ function DomainsContent() {
 
   // Начальная загрузка и поллинг
   useEffect(() => {
-    // Начальная загрузка
+    // AbortController для отмены запросов при размонтировании
+    const abortController = new AbortController();
+    
     setLoading(true);
-    loadData();
+    loadData(abortController.signal);
 
     // Поллинг каждые 3 секунды
     const interval = setInterval(() => {
       // Поллинг без лоадера, чтобы не мешать пользователю
-      loadData();
+      loadData(abortController.signal);
     }, 3000);
 
-    return () => clearInterval(interval);
+    return () => {
+      // Отменяем все запросы при размонтировании или смене страницы
+      abortController.abort();
+      clearInterval(interval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
