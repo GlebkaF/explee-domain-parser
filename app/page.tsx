@@ -1,15 +1,25 @@
 'use client';
 
 import { useState, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 import { AppShell, Title, Text, Stack, Group, Loader, Center, Button, Menu } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { IconUpload, IconTools, IconTrash, IconPlayerPlay } from '@tabler/icons-react';
+import { IconUpload, IconTools, IconTrash, IconPlayerPlay, IconLogout } from '@tabler/icons-react';
 import DomainsContainer, { reloadDomains } from './components/DomainsContainer';
 import { UploadModal } from './components/UploadModal';
 
 function HomeContent() {
+  const router = useRouter();
   const [uploadModalOpened, setUploadModalOpened] = useState(false);
+
+  const handleLogout = async () => {
+    localStorage.removeItem('auth_password');
+    // Удаляем cookie через fetch чтобы сервер его удалил
+    await fetch('/api/auth/logout', { method: 'POST' });
+    router.push('/login');
+    router.refresh();
+  };
 
   const handleUploadSuccess = () => {
     // Перезагружаем данные после успешной загрузки
@@ -29,10 +39,10 @@ function HomeContent() {
       labels: { confirm: 'Удалить все', cancel: 'Отмена' },
       confirmProps: { color: 'red' },
       onConfirm: async () => {
-        try {
-          const response = await fetch('/api/domains/clear', {
-            method: 'DELETE',
-          });
+    try {
+      const response = await fetch('/api/domains/clear', {
+        method: 'DELETE',
+      });
 
           const result = await response.json();
           
@@ -54,7 +64,7 @@ function HomeContent() {
           console.error('Error clearing database:', error);
           notifications.show({
             title: 'Ошибка',
-            message: 'Ошибка при очистке базы данных',
+        message: 'Ошибка при очистке базы данных',
             color: 'red',
           });
         }
@@ -143,9 +153,16 @@ function HomeContent() {
                 <Menu.Item
                   color="red"
                   leftSection={<IconTrash size={16} />}
-                  onClick={handleClearDatabase}
+                onClick={handleClearDatabase}
                 >
                   Очистить базу данных
+                </Menu.Item>
+                <Menu.Divider />
+                <Menu.Item
+                  leftSection={<IconLogout size={16} />}
+                  onClick={handleLogout}
+                >
+                  Выйти
                 </Menu.Item>
               </Menu.Dropdown>
             </Menu>
