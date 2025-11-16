@@ -20,6 +20,8 @@ interface DomainsTableProps {
   total: number;
   startIndex: number;
   endIndex: number;
+  onRunAgent: (domainId: number) => Promise<void>;
+  onRestart: (domainId: number) => Promise<void>;
 }
 
 const STATUS_CONFIG = {
@@ -57,8 +59,9 @@ export default function DomainsTable({
   total,
   startIndex,
   endIndex,
+  onRunAgent,
+  onRestart,
 }: DomainsTableProps) {
-  const [loadingDomains, setLoadingDomains] = useState<Set<number>>(new Set());
   const [expandedDomains, setExpandedDomains] = useState<Set<number>>(new Set());
 
   const toggleExpanded = (domainId: number) => {
@@ -71,56 +74,6 @@ export default function DomainsTable({
       }
       return newSet;
     });
-  };
-
-  const handleRunAgent = async (domainId: number) => {
-    setLoadingDomains(prev => new Set(prev).add(domainId));
-
-    try {
-      const response = await fetch(`/api/domains/${domainId}/run-agent`, {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        alert(data.error || 'Ошибка при запуске агента');
-      }
-    } catch (error) {
-      console.error('Error running agent:', error);
-      alert('Ошибка при запуске агента');
-    } finally {
-      setLoadingDomains(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(domainId);
-        return newSet;
-      });
-    }
-  };
-
-  const handleRestart = async (domainId: number) => {
-    setLoadingDomains(prev => new Set(prev).add(domainId));
-
-    try {
-      const response = await fetch(`/api/domains/${domainId}/restart`, {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        alert(data.error || 'Ошибка при перезапуске');
-      }
-    } catch (error) {
-      console.error('Error restarting:', error);
-      alert('Ошибка при перезапуске');
-    } finally {
-      setLoadingDomains(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(domainId);
-        return newSet;
-      });
-    }
   };
 
   const hasPrevPage = page > 1;
@@ -178,8 +131,8 @@ export default function DomainsTable({
               <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                 {domains.map((domain) => {
                   const statusConfig = STATUS_CONFIG[domain.status] || STATUS_CONFIG.created;
-                  const isLoading = loadingDomains.has(domain.id);
                   const canRunAgent = domain.status === 'created';
+                  const canRestart = domain.status === 'running' || domain.status === 'error';
                   const isExpanded = expandedDomains.has(domain.id);
                   const hasDescription = domain.status === 'completed' && domain.companyDescription;
 
@@ -232,21 +185,21 @@ export default function DomainsTable({
                           })}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {domain.status === 'running' || domain.status === 'error' ? (
+                          {canRestart ? (
                             <button
-                              onClick={() => handleRestart(domain.id)}
-                              disabled={isLoading}
+                              onClick={() => onRestart(domain.id)}
+                              disabled={!canRestart}
                               className="px-3 py-1 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-medium rounded transition-colors"
                             >
-                              {isLoading ? '⏳ Перезапуск...' : '🔄 Перезапустить'}
+                              🔄 Перезапустить
                             </button>
                           ) : (
                             <button
-                              onClick={() => handleRunAgent(domain.id)}
-                              disabled={!canRunAgent || isLoading}
+                              onClick={() => onRunAgent(domain.id)}
+                              disabled={!canRunAgent}
                               className="px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-xs font-medium rounded transition-colors"
                             >
-                              {isLoading ? '⏳ Запуск...' : '🚀 Run Agent'}
+                              🚀 Run Agent
                             </button>
                           )}
                         </td>
