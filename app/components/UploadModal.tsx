@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { Modal, Stack, FileInput, Button, Alert, Grid, Card, Text, Box, Table, Badge, Code } from '@mantine/core';
-import { IconUpload, IconFile, IconCheck, IconAlertTriangle, IconX } from '@tabler/icons-react';
+import { Modal, Stack, FileInput, Button, Alert, Grid, Card, Text, Box, Table, Badge, Code, Group } from '@mantine/core';
+import { IconUpload, IconFile, IconCheck, IconAlertTriangle, IconX, IconDownload } from '@tabler/icons-react';
 
 interface UploadStats {
   totalRows: number;
@@ -77,6 +77,34 @@ export function UploadModal({ opened, onClose, onSuccess }: UploadModalProps) {
     onClose();
   };
 
+  const handleDownloadExample = () => {
+    const exampleCsv = `domain
+example.com
+https://google.com
+http://github.com
+www.reddit.com
+https://www.youtube.com/watch?v=123
+openai.com
+vercel.com
+microsoft.com
+apple.com
+amazon.com`;
+
+    const blob = new Blob([exampleCsv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'example-domains.csv');
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    URL.revokeObjectURL(url);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'success':
@@ -110,9 +138,19 @@ export function UploadModal({ opened, onClose, onSuccess }: UploadModalProps) {
         />
 
         <Box>
-          <Text size="sm" fw={500} mb="xs">
-            Формат CSV файла:
-          </Text>
+          <Group justify="space-between" mb="xs">
+            <Text size="sm" fw={500}>
+              Формат CSV файла:
+            </Text>
+            <Button
+              variant="light"
+              size="xs"
+              leftSection={<IconDownload size={14} />}
+              onClick={handleDownloadExample}
+            >
+              Скачать пример
+            </Button>
+          </Group>
           <Code block>
 {`domain
 example.com
