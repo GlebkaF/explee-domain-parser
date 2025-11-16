@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import DomainsTable from './DomainsTable';
@@ -28,6 +28,10 @@ function DomainsContent() {
   } | null>(null);
   
   const [loading, setLoading] = useState(true);
+  
+  // Ссылка на интервал поллинга для перезапуска
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Функция загрузки данных
   const loadData = async (signal?: AbortSignal) => {
@@ -55,24 +59,37 @@ function DomainsContent() {
     }
   };
 
+  // Функция перезапуска поллинга
+  const resetPolling = () => {
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+    }
+    if (abortControllerRef.current) {
+      pollIntervalRef.current = setInterval(() => {
+        loadData(abortControllerRef.current!.signal);
+      }, 3000);
+    }
+  };
+
   // Начальная загрузка и поллинг
   useEffect(() => {
     // AbortController для отмены запросов при размонтировании
     const abortController = new AbortController();
+    abortControllerRef.current = abortController;
     
     setLoading(true);
     loadData(abortController.signal);
 
-    // Поллинг каждые 3 секунды
-    const interval = setInterval(() => {
-      // Поллинг без лоадера, чтобы не мешать пользователю
-      loadData(abortController.signal);
-    }, 3000);
+    // Запускаем поллинг
+    resetPolling();
 
     return () => {
       // Отменяем все запросы при размонтировании или смене страницы
       abortController.abort();
-      clearInterval(interval);
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+      abortControllerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
@@ -91,6 +108,9 @@ function DomainsContent() {
         ),
       };
     });
+
+    // Перезапускаем поллинг чтобы дать серверу время обработать запрос
+    resetPolling();
 
     try {
       const response = await fetch(`/api/domains/${domainId}/run-agent`, {
@@ -126,6 +146,9 @@ function DomainsContent() {
         ),
       };
     });
+
+    // Перезапускаем поллинг чтобы дать серверу время обработать запрос
+    resetPolling();
 
     try {
       const response = await fetch(`/api/domains/${domainId}/restart`, {
