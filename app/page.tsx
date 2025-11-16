@@ -6,7 +6,7 @@ import { AppShell, Title, Text, Stack, Group, Loader, Center, Button, Menu } fro
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
 import { IconUpload, IconTools, IconTrash, IconPlayerPlay, IconLogout } from '@tabler/icons-react';
-import DomainsContainer, { reloadDomains } from './components/DomainsContainer';
+import DomainsContainer from './components/DomainsContainer';
 import { UploadModal } from './components/UploadModal';
 
 function HomeContent() {
@@ -22,8 +22,8 @@ function HomeContent() {
   };
 
   const handleUploadSuccess = () => {
-    // Перезагружаем данные после успешной загрузки
-    reloadDomains();
+    // Обновляем страницу после успешной загрузки
+    router.refresh();
   };
 
   // Обработчик очистки БД
@@ -52,7 +52,7 @@ function HomeContent() {
               message: `База данных очищена. Удалено доменов: ${result.deletedCount}`,
               color: 'green',
             });
-            reloadDomains();
+            router.refresh();
           } else {
             notifications.show({
               title: 'Ошибка',
@@ -95,14 +95,14 @@ function HomeContent() {
             color: 'blue',
           });
         } else {
-          notifications.show({
-            title: 'Успешно',
-            message: result.domain 
-              ? `Домен ${result.domain} успешно обработан`
-              : 'Домен успешно обработан',
-            color: 'green',
-          });
-          reloadDomains();
+            notifications.show({
+              title: 'Успешно',
+              message: result.domain 
+                ? `Домен ${result.domain} успешно обработан`
+                : 'Домен успешно обработан',
+              color: 'green',
+            });
+          router.refresh();
         }
       } else {
         notifications.show({
@@ -171,7 +171,9 @@ function HomeContent() {
       </AppShell.Header>
 
       <AppShell.Main>
-        <DomainsContainer onOpenUpload={() => setUploadModalOpened(true)} />
+        <DomainsContainer 
+          onOpenUpload={() => setUploadModalOpened(true)}
+        />
       </AppShell.Main>
 
       <UploadModal

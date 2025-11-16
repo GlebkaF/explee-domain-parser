@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Stack, Text, Center, Loader, LoadingOverlay, Button } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { IconUpload } from '@tabler/icons-react';
@@ -40,7 +40,7 @@ export default function DomainsContainer({ onOpenUpload }: DomainsContainerProps
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Функция загрузки данных
-  const loadData = async (signal?: AbortSignal) => {
+  const loadData = useCallback(async (signal?: AbortSignal) => {
     try {
       const response = await fetch(`/api/domains/list?page=${page}`, { signal });
       const result = await response.json();
@@ -63,7 +63,7 @@ export default function DomainsContainer({ onOpenUpload }: DomainsContainerProps
     } finally {
       setLoading(false);
     }
-  };
+  }, [page]);
 
   // Функция перезапуска поллинга
   const resetPolling = () => {
@@ -196,15 +196,6 @@ export default function DomainsContainer({ onOpenUpload }: DomainsContainerProps
     }
   };
 
-  // Публичный метод для перезагрузки данных (используется после загрузки CSV)
-  useEffect(() => {
-    // Сохраняем функцию loadData в window для доступа извне
-    (window as any).__reloadDomains = () => loadData(abortControllerRef.current?.signal);
-    
-    return () => {
-      delete (window as any).__reloadDomains;
-    };
-  }, []);
 
   if (loading && !data) {
     return (
@@ -261,10 +252,4 @@ export default function DomainsContainer({ onOpenUpload }: DomainsContainerProps
   );
 }
 
-// Хелпер для внешнего доступа к функции перезагрузки
-export function reloadDomains() {
-  if (typeof window !== 'undefined' && (window as any).__reloadDomains) {
-    (window as any).__reloadDomains();
-  }
-}
 
