@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import type { Domain } from '@prisma/client';
 import OpenAI from 'openai';
 
 // Инициализируем OpenAI клиент
@@ -7,7 +8,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-async function analyzeCompanyWithAI(htmlContent: string, domain: string): Promise<string> {
+async function analyzeCompanyWithAI(htmlContent: string, domain: string, userQuery: string): Promise<string> {
   try {
     // Берем первые 4000 символов HTML для анализа (чтобы не превысить лимиты токенов)
     const htmlSnippet = htmlContent
@@ -25,18 +26,18 @@ async function analyzeCompanyWithAI(htmlContent: string, domain: string): Promis
       messages: [
         {
           role: 'system',
-          content: 'Ты - эксперт по анализу компаний. Твоя задача - кратко описать чем занимается компания в одном предложении на русском языке, основываясь на содержимом их сайта.',
+          content: 'Ты - эксперт по анализу компаний. Твоя задача - ответить на вопрос пользователя о компании, основываясь на содержимом их сайта. Отвечай кратко и по существу на русском языке.',
         },
         {
           role: 'user',
-          content: `Проанализируй содержимое сайта ${domain} и опиши в одном предложении чем занимается эта компания:\n\n${htmlSnippet}`,
+          content: `Проанализируй содержимое сайта ${domain} и ответь на вопрос: "${userQuery}"\n\nСодержимое сайта:\n${htmlSnippet}`,
         },
       ],
-      max_tokens: 150,
+      max_tokens: 300,
       temperature: 0.7,
     });
 
-    const description = completion.choices[0]?.message?.content?.trim() || 'Нет описания';
+    const description = completion.choices[0]?.message?.content?.trim() || 'Не удалось получить ответ';
     console.log(`[AI] Получен ответ: "${description}"`);
     
     return description;
@@ -51,7 +52,7 @@ async function analyzeCompanyWithAI(htmlContent: string, domain: string): Promis
       throw new Error(`Ошибка AI: ${error.message}`);
     }
     
-    throw new Error('Не удалось получить описание компании');
+    throw new Error('Не удалось получить ответ на запрос');
   }
 }
 
@@ -128,11 +129,10 @@ async function fetchDomainHtml(domain: string): Promise<string> {
 }
 
 async function processDomain(domainId: number) {
-  let domainRecord;
-  
   try {
     // Получаем информацию о домене
-    domainRecord = await prisma.domain.findUnique({
+    // Тип автоматически выводится из Prisma Client
+    const domainRecord: Domain | null = await prisma.domain.findUnique({
       where: { id: domainId },
     });
 
@@ -164,17 +164,22 @@ async function processDomain(domainId: number) {
       throw new Error('Недостаточно текстового контента на странице для анализа');
     }
 
-    // Анализируем с помощью AI
-    const companyDescription = await analyzeCompanyWithAI(htmlContent, domainRecord.domain);
+    // Проверяем наличие userQuery
+    if (!domainRecord.userQuery) {
+      throw new Error('Запрос пользователя не найден');
+    }
 
-    console.log(`[Cron] Описание компании: "${companyDescription}"`);
+    // Анализируем с помощью AI
+    const answer = await analyzeCompanyWithAI(htmlContent, domainRecord.domain, domainRecord.userQuery);
+
+    console.log(`[Cron] Ответ на запрос "${domainRecord.userQuery}": "${answer}"`);
 
     // Сохраняем результат
     await prisma.domain.update({
       where: { id: domainId },
       data: { 
         status: 'completed',
-        companyDescription: companyDescription || 'Нет описания',
+        companyDescription: answer || 'Не удалось получить ответ',
         errorMessage: null,
       },
     });

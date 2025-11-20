@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { error } from 'console';
 
 export async function POST(
   request: NextRequest,
@@ -13,6 +12,17 @@ export async function POST(
     if (isNaN(domainId)) {
       return NextResponse.json(
         { success: false, error: 'Неверный ID домена' },
+        { status: 400 }
+      );
+    }
+
+    // Получаем userQuery из body
+    const body = await request.json();
+    const userQuery = body.userQuery as string | undefined;
+
+    if (!userQuery || userQuery.trim().length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Запрос пользователя обязателен' },
         { status: 400 }
       );
     }
@@ -40,12 +50,13 @@ export async function POST(
       );
     }
 
-    // Меняем статус на queued
+    // Меняем статус на queued и сохраняем userQuery
     const updatedDomain = await prisma.domain.update({
       where: { id: domainId },
       data: {
         status: 'queued',
         errorMessage: null,
+        userQuery: userQuery.trim(),
       },
     });
 
