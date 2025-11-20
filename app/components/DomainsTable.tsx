@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Table, Badge, Button, Text, Group, Stack, Anchor, Pagination } from '@mantine/core';
+import { Table, Badge, Button, Text, Group, Stack, Anchor, Pagination, TextInput, Modal } from '@mantine/core';
 import { IconRocket, IconRefresh } from '@tabler/icons-react';
 
 interface Domain {
@@ -11,6 +11,7 @@ interface Domain {
   status: 'created' | 'queued' | 'running' | 'completed' | 'error';
   errorMessage: string | null;
   companyDescription: string | null;
+  userQuery: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,7 +23,7 @@ interface DomainsTableProps {
   total: number;
   startIndex: number;
   endIndex: number;
-  onRunAgent: (domainId: number) => Promise<void>;
+  onRunAgent: (domainId: number, userQuery: string) => Promise<void>;
   onRestart: (domainId: number) => Promise<void>;
 }
 
@@ -60,19 +61,82 @@ export default function DomainsTable({
   onRestart,
 }: DomainsTableProps) {
   const router = useRouter();
+  const [modalOpened, setModalOpened] = useState(false);
+  const [selectedDomainId, setSelectedDomainId] = useState<number | null>(null);
+  const [queryInput, setQueryInput] = useState('');
 
   const handlePageChange = (newPage: number) => {
     router.push(`/?page=${newPage}`);
   };
 
+  const handleRunAgentClick = (domainId: number) => {
+    setSelectedDomainId(domainId);
+    setQueryInput('');
+    setModalOpened(true);
+  };
+
+  const handleConfirm = async () => {
+    if (selectedDomainId && queryInput.trim()) {
+      await onRunAgent(selectedDomainId, queryInput.trim());
+      setModalOpened(false);
+      setQueryInput('');
+      setSelectedDomainId(null);
+    }
+  };
+
+  const handleCancel = () => {
+    setModalOpened(false);
+    setQueryInput('');
+    setSelectedDomainId(null);
+  };
+
   return (
-    <Stack gap="md">
-      {/* Stats */}
-      {total > 0 && (
-        <Text size="sm" c="dimmed">
-          Показано {startIndex}-{endIndex} из {total}
-        </Text>
-      )}
+    <>
+      <Modal
+        opened={modalOpened}
+        onClose={handleCancel}
+        title="Запрос к агенту"
+        centered
+      >
+        <Stack gap="md">
+          <Text size="sm" c="dimmed">
+            Что вы хотели бы узнать о компании?
+          </Text>
+          <TextInput
+            placeholder="Например: legal имя компании, цены, контакты..."
+            value={queryInput}
+            onChange={(e) => setQueryInput(e.currentTarget.value)}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && queryInput.trim()) {
+                handleConfirm();
+              }
+            }}
+          />
+          <Group justify="flex-end" mt="md">
+            <Button
+              variant="subtle"
+              onClick={handleCancel}
+            >
+              Отмена
+            </Button>
+            <Button
+              onClick={handleConfirm}
+              disabled={!queryInput.trim()}
+            >
+              Запустить
+            </Button>
+          </Group>
+        </Stack>
+      </Modal>
+
+      <Stack gap="md">
+        {/* Stats */}
+        {total > 0 && (
+          <Text size="sm" c="dimmed">
+            Показано {startIndex}-{endIndex} из {total}
+          </Text>
+        )}
 
       {/* Table */}
       <Table.ScrollContainer minWidth={1000}>
@@ -82,7 +146,8 @@ export default function DomainsTable({
               <Table.Th>ID</Table.Th>
               <Table.Th>Домен</Table.Th>
               <Table.Th>Статус</Table.Th>
-              <Table.Th>Описание компании</Table.Th>
+              <Table.Th>Запрос</Table.Th>
+              <Table.Th>Ответ</Table.Th>
               <Table.Th>Дата создания</Table.Th>
               <Table.Th>Действия</Table.Th>
             </Table.Tr>
@@ -115,6 +180,17 @@ export default function DomainsTable({
                     {domain.errorMessage && (
                       <Text size="xs" c="red" mt={4}>
                         {domain.errorMessage}
+                      </Text>
+                    )}
+                  </Table.Td>
+                  <Table.Td>
+                    {domain.userQuery ? (
+                      <Text size="sm" lineClamp={2} style={{ maxWidth: 300 }}>
+                        {domain.userQuery}
+                      </Text>
+                    ) : (
+                      <Text size="sm" c="dimmed">
+                        —
                       </Text>
                     )}
                   </Table.Td>
@@ -153,7 +229,7 @@ export default function DomainsTable({
                       </Button>
                     ) : (
                       <Button
-                        onClick={() => onRunAgent(domain.id)}
+                        onClick={() => handleRunAgentClick(domain.id)}
                         disabled={!canRunAgent}
                         size="xs"
                         leftSection={<IconRocket size={14} />}
@@ -181,6 +257,7 @@ export default function DomainsTable({
           />
         </Group>
       )}
-    </Stack>
+      </Stack>
+    </>
   );
 }

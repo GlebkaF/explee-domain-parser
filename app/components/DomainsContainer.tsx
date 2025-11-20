@@ -13,6 +13,7 @@ interface Domain {
   status: 'created' | 'queued' | 'running' | 'completed' | 'error';
   errorMessage: string | null;
   companyDescription: string | null;
+  userQuery: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -101,15 +102,15 @@ export default function DomainsContainer({ onOpenUpload }: DomainsContainerProps
   }, [page]);
 
   // Обработчик запуска агента
-  const handleRunAgent = async (domainId: number) => {
-    // Оптимистичное обновление статуса
+  const handleRunAgent = async (domainId: number, userQuery: string) => {
+    // Оптимистичное обновление статуса и userQuery
     setData(prevData => {
       if (!prevData) return prevData;
       return {
         ...prevData,
         domains: prevData.domains.map(domain =>
           domain.id === domainId
-            ? { ...domain, status: 'queued' as const }
+            ? { ...domain, status: 'queued' as const, userQuery }
             : domain
         ),
       };
@@ -121,6 +122,10 @@ export default function DomainsContainer({ onOpenUpload }: DomainsContainerProps
     try {
       const response = await fetch(`/api/domains/${domainId}/run-agent`, {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userQuery }),
       });
 
       const result = await response.json();
