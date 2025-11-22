@@ -66,6 +66,8 @@ export default function DomainsTable({
     router.push(`/?page=${newPage}`);
   };
 
+  const columnTitle = domains.find(d => d.userQuery)?.userQuery || 'Ответ';
+
   return (
     <Stack gap="md">
         {/* Stats */}
@@ -83,8 +85,7 @@ export default function DomainsTable({
               <Table.Th>ID</Table.Th>
               <Table.Th>Домен</Table.Th>
               <Table.Th>Статус</Table.Th>
-              <Table.Th>Запрос</Table.Th>
-              <Table.Th>Ответ</Table.Th>
+              <Table.Th>{columnTitle}</Table.Th>
               <Table.Th>Дата создания</Table.Th>
               <Table.Th>Действия</Table.Th>
             </Table.Tr>
@@ -117,17 +118,6 @@ export default function DomainsTable({
                     {domain.errorMessage && (
                       <Text size="xs" c="red" mt={4}>
                         {domain.errorMessage}
-                      </Text>
-                    )}
-                  </Table.Td>
-                  <Table.Td>
-                    {domain.userQuery ? (
-                      <Text size="sm" lineClamp={2} style={{ maxWidth: 300 }}>
-                        {domain.userQuery}
-                      </Text>
-                    ) : (
-                      <Text size="sm" c="dimmed">
-                        —
                       </Text>
                     )}
                   </Table.Td>
