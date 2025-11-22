@@ -16,17 +16,6 @@ export async function POST(
       );
     }
 
-    // Получаем userQuery из body
-    const body = await request.json();
-    const userQuery = body.userQuery as string | undefined;
-
-    if (!userQuery || userQuery.trim().length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'Запрос пользователя обязателен' },
-        { status: 400 }
-      );
-    }
-
     // Проверяем существование домена
     const domain = await prisma.domain.findUnique({
       where: { id: domainId },
@@ -36,6 +25,13 @@ export async function POST(
       return NextResponse.json(
         { success: false, error: 'Домен не найден' },
         { status: 404 }
+      );
+    }
+
+    if (!domain.userQuery || domain.userQuery.trim().length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'Запрос пользователя не указан. Пожалуйста, укажите запрос при загрузке доменов.' },
+        { status: 400 }
       );
     }
 
@@ -50,13 +46,12 @@ export async function POST(
       );
     }
 
-    // Меняем статус на queued и сохраняем userQuery
+    // Меняем статус на queued
     const updatedDomain = await prisma.domain.update({
       where: { id: domainId },
       data: {
         status: 'queued',
         errorMessage: null,
-        userQuery: userQuery.trim(),
       },
     });
 

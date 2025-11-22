@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Stack, Text, Center, Loader, LoadingOverlay, Button } from '@mantine/core';
+import { Stack, Text, Center, Loader, LoadingOverlay, Button, Group } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { IconUpload } from '@tabler/icons-react';
 import DomainsTable from './DomainsTable';
@@ -19,7 +19,7 @@ interface Domain {
 }
 
 interface DomainsContainerProps {
-  onOpenUpload: () => void;
+  onOpenUpload: (existingUserQuery?: string) => void;
 }
 
 export default function DomainsContainer({ onOpenUpload }: DomainsContainerProps) {
@@ -102,15 +102,15 @@ export default function DomainsContainer({ onOpenUpload }: DomainsContainerProps
   }, [page]);
 
   // Обработчик запуска агента
-  const handleRunAgent = async (domainId: number, userQuery: string) => {
-    // Оптимистичное обновление статуса и userQuery
+  const handleRunAgent = async (domainId: number) => {
+    // Оптимистичное обновление статуса
     setData(prevData => {
       if (!prevData) return prevData;
       return {
         ...prevData,
         domains: prevData.domains.map(domain =>
           domain.id === domainId
-            ? { ...domain, status: 'queued' as const, userQuery }
+            ? { ...domain, status: 'queued' as const }
             : domain
         ),
       };
@@ -122,10 +122,6 @@ export default function DomainsContainer({ onOpenUpload }: DomainsContainerProps
     try {
       const response = await fetch(`/api/domains/${domainId}/run-agent`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ userQuery }),
       });
 
       const result = await response.json();
@@ -230,7 +226,7 @@ export default function DomainsContainer({ onOpenUpload }: DomainsContainerProps
           <Text c="dimmed">Загрузите CSV файл с доменами для начала работы</Text>
           <Button
             leftSection={<IconUpload size={18} />}
-            onClick={onOpenUpload}
+            onClick={() => onOpenUpload()}
             size="md"
           >
             Загрузить CSV
@@ -240,9 +236,19 @@ export default function DomainsContainer({ onOpenUpload }: DomainsContainerProps
     );
   }
 
+  const domainWithQuery = data.domains.find(d => d.userQuery);
+
   return (
     <div style={{ position: 'relative' }}>
       <LoadingOverlay visible={loading} overlayProps={{ blur: 2 }} />
+      <Group mb="md" justify="flex-end">
+        <Button
+          leftSection={<IconUpload size={18} />}
+          onClick={() => onOpenUpload(domainWithQuery?.userQuery || undefined)}
+        >
+          Загрузить CSV
+        </Button>
+      </Group>
       <DomainsTable
         domains={data.domains}
         page={page}

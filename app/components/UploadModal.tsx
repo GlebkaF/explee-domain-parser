@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
-import { Modal, Stack, FileInput, Button, Alert, Grid, Card, Text, Box, Table, Badge, Code, Group } from '@mantine/core';
-import { IconUpload, IconFile, IconCheck, IconAlertTriangle, IconX, IconDownload } from '@tabler/icons-react';
+import { useState, useEffect } from 'react';
+import { Modal, Stack, FileInput, Button, Alert, Grid, Card, Text, Box, Table, Badge, Code, Group, TextInput } from '@mantine/core';
+import { modals } from '@mantine/modals';
+import { IconUpload, IconFile, IconCheck, IconAlertTriangle, IconX, IconDownload, IconTrash } from '@tabler/icons-react';
 
 interface UploadStats {
   totalRows: number;
@@ -29,12 +30,20 @@ interface UploadModalProps {
   opened: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  existingUserQuery?: string;
 }
 
-export function UploadModal({ opened, onClose, onSuccess }: UploadModalProps) {
+export function UploadModal({ opened, onClose, onSuccess, existingUserQuery }: UploadModalProps) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<UploadResponse | null>(null);
+  const [userQuery, setUserQuery] = useState('');
+
+  useEffect(() => {
+    if (opened) {
+      setUserQuery(existingUserQuery || '');
+    }
+  }, [opened, existingUserQuery]);
 
   const handleUpload = async () => {
     if (!file) return;
@@ -45,6 +54,9 @@ export function UploadModal({ opened, onClose, onSuccess }: UploadModalProps) {
     try {
       const formData = new FormData();
       formData.append('file', file);
+      if (userQuery.trim()) {
+        formData.append('userQuery', userQuery.trim());
+      }
 
       const response = await fetch('/api/domains/upload', {
         method: 'POST',
@@ -127,41 +139,95 @@ amazon.com`;
       centered
     >
       <Stack gap="md">
-        <FileInput
-          leftSection={<IconFile size={18} />}
-          label="Выберите CSV файл"
-          placeholder="Нажмите для выбора файла"
-          accept=".csv"
-          value={file}
-          onChange={setFile}
-          disabled={uploading}
+        <Group justify="space-between" align="flex-end">
+          <FileInput
+            leftSection={<IconFile size={18} />}
+            label="Выберите CSV файл с доменами компаний"
+            placeholder="Нажмите для выбора файла"
+            accept=".csv"
+            value={file}
+            onChange={setFile}
+            disabled={uploading}
+            style={{ flex: 1 }}
+          />
+          <Button
+            variant="light"
+            size="sm"
+            leftSection={<IconDownload size={14} />}
+            onClick={handleDownloadExample}
+            disabled={uploading}
+          >
+            Скачать пример
+          </Button>
+        </Group>
+
+        <TextInput
+          label="Что бы вы хотели узнать о компании?"
+          placeholder="Например: legal имя компании, цены, контакты..."
+          value={userQuery}
+          onChange={(e) => setUserQuery(e.currentTarget.value)}
+          disabled={uploading || !!existingUserQuery}
         />
 
-        <Box>
-          <Group justify="space-between" mb="xs">
-            <Text size="sm" fw={500}>
-              Формат CSV файла:
-            </Text>
+        {existingUserQuery && (
+          <Group gap="xs" align="flex-start">
+            <Alert color="blue" icon={<IconAlertTriangle size={16} />} style={{ flex: 1 }}>
+              <Text size="sm">
+                Если компании уже загружены, то изменить вопрос нельзя. Если хотите изменить вопрос, очистите БД и задайте новый вопрос.
+              </Text>
+            </Alert>
             <Button
               variant="light"
-              size="xs"
-              leftSection={<IconDownload size={14} />}
-              onClick={handleDownloadExample}
+              color="red"
+              size="sm"
+              leftSection={<IconTrash size={16} />}
+              onClick={() => {
+                modals.openConfirmModal({
+                  title: 'Подтверждение очистки базы данных',
+                  centered: true,
+                  children: (
+                    <Text size="sm">
+                      ⚠️ Вы уверены, что хотите удалить ВСЕ домены из базы данных? Это действие необратимо!
+                    </Text>
+                  ),
+                  labels: { confirm: 'Удалить все', cancel: 'Отмена' },
+                  confirmProps: { color: 'red' },
+                  onConfirm: async () => {
+                    try {
+                      const response = await fetch('/api/domains/clear', {
+                        method: 'DELETE',
+                      });
+
+                      const result = await response.json();
+                      
+                      if (result.success) {
+                        setUserQuery('');
+                        handleClose();
+                        if (onSuccess) {
+                          onSuccess();
+                        }
+                      } else {
+                        setResult({
+                          success: false,
+                          error: result.error || 'Ошибка при очистке базы данных',
+                        });
+                      }
+                    } catch (error) {
+                      console.error('Error clearing database:', error);
+                      setResult({
+                        success: false,
+                        error: 'Ошибка при очистке базы данных',
+                      });
+                    }
+                  },
+                });
+              }}
+              disabled={uploading}
             >
-              Скачать пример
+              Очистить таблицу
             </Button>
           </Group>
-          <Code block>
-{`domain
-example.com
-https://google.com
-http://github.com
-www.reddit.com`}
-          </Code>
-          <Text size="xs" c="dimmed" mt="xs">
-            ✨ Автоматически удаляются: <Code>https://</Code>, <Code>http://</Code>, <Code>www.</Code>, пути, порты
-          </Text>
-        </Box>
+        )}
 
         <Button
           onClick={handleUpload}
