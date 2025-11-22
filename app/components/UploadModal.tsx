@@ -100,7 +100,8 @@ openai.com
 vercel.com
 microsoft.com
 apple.com
-amazon.com`;
+amazon.com
+gleb.land`;
 
     const blob = new Blob([exampleCsv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
