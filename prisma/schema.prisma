@@ -21,7 +21,7 @@ model Domain {
   status             DomainStatus @default(created)
   errorMessage       String?
   companyDescription String?
-  userQuery          String?
+  userQuery          String
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 }

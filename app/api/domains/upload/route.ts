@@ -21,7 +21,6 @@ interface DomainProcessingResult {
   errorReason?: string;
 }
 
-// Очистка домена от протоколов и лишних символов
 function cleanDomain(domain: string): string {
   if (!domain || typeof domain !== 'string') return '';
   
@@ -42,7 +41,6 @@ function cleanDomain(domain: string): string {
   return cleaned;
 }
 
-// Валидация домена
 function isValidDomain(domain: string): boolean {
   if (!domain || typeof domain !== 'string') return false;
   
@@ -65,8 +63,8 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const userQuery = formData.get('userQuery') as string | null;
 
-    // Проверка наличия файла
     if (!file) {
       return NextResponse.json(
         { success: false, error: 'Файл не загружен' },
@@ -74,7 +72,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Проверка типа файла
+    if (!userQuery || !userQuery.trim()) {
+      return NextResponse.json(
+        { success: false, error: 'Запрос пользователя обязателен' },
+        { status: 400 }
+      );
+    }
+
     if (!file.name.endsWith('.csv')) {
       return NextResponse.json(
         { success: false, error: 'Разрешены только CSV файлы' },
@@ -82,10 +86,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Чтение содержимого файла
     const text = await file.text();
 
-    // Проверка на пустой файл
     if (!text.trim()) {
       return NextResponse.json(
         { success: false, error: 'CSV файл пустой' },
@@ -93,7 +95,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Парсинг CSV
     const parseResult = Papa.parse<CSVRow>(text, {
       header: true,
       skipEmptyLines: true,
@@ -107,7 +108,6 @@ export async function POST(request: NextRequest) {
       invalid: 0,
     };
 
-    // Валидация и подготовка доменов
     const validDomains: string[] = [];
     const seenDomains = new Set<string>();
     const processingResults: DomainProcessingResult[] = [];
@@ -126,7 +126,6 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // Очищаем домен от протоколов и лишних символов
       const cleanedDomain = cleanDomain(rawDomain);
       
       if (!cleanedDomain) {
@@ -140,7 +139,6 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // Проверка валидности
       if (!isValidDomain(cleanedDomain)) {
         stats.invalid++;
         processingResults.push({
@@ -152,7 +150,6 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // Проверка на дубликаты в самом файле
       if (seenDomains.has(cleanedDomain)) {
         stats.duplicates++;
         processingResults.push({
@@ -167,7 +164,6 @@ export async function POST(request: NextRequest) {
       seenDomains.add(cleanedDomain);
       validDomains.push(cleanedDomain);
       
-      // Временно помечаем как success, проверим дубликаты БД позже
       processingResults.push({
         originalDomain: rawDomain,
         cleanedDomain: cleanedDomain,
@@ -175,11 +171,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Массовая вставка в БД
     const existingDomains = new Set<string>();
     if (validDomains.length > 0) {
       try {
-        // Проверяем существующие домены
         const existing = await prisma.domain.findMany({
           where: {
             domain: { in: validDomains }
@@ -189,15 +183,23 @@ export async function POST(request: NextRequest) {
         
         existing.forEach((d: { domain: string }) => existingDomains.add(d.domain));
         
+        const domainsToInsert = validDomains.filter(domain => !existingDomains.has(domain));
+        
+        if (domainsToInsert.length === 0) {
+          return NextResponse.json(
+            { success: false, error: 'Нет новых доменов для добавления' },
+            { status: 400 }
+          );
+        }
+        
         const result = await prisma.domain.createMany({
-          data: validDomains.map(domain => ({ domain })),
+          data: domainsToInsert.map(domain => ({ domain, userQuery: userQuery.trim() })),
           skipDuplicates: true,
         });
         
         stats.inserted = result.count;
         stats.duplicates += validDomains.length - result.count;
         
-        // Обновляем статусы в результатах
         processingResults.forEach(result => {
           if (result.status === 'success' && existingDomains.has(result.cleanedDomain)) {
             result.status = 'duplicate';
@@ -213,7 +215,6 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Получение первых 20 доменов из БД
     const domains = await prisma.domain.findMany({
       take: 20,
       orderBy: { createdAt: 'desc' },

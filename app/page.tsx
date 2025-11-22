@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import { AppShell, Title, Text, Stack, Group, Loader, Center, Button, Menu } from '@mantine/core';
 import { modals } from '@mantine/modals';
 import { notifications } from '@mantine/notifications';
-import { IconUpload, IconTools, IconTrash, IconPlayerPlay, IconLogout } from '@tabler/icons-react';
+import { IconTools, IconTrash, IconPlayerPlay, IconLogout } from '@tabler/icons-react';
 import DomainsContainer from './components/DomainsContainer';
 import { UploadModal } from './components/UploadModal';
 
 function HomeContent() {
   const router = useRouter();
   const [uploadModalOpened, setUploadModalOpened] = useState(false);
+  const [existingUserQuery, setExistingUserQuery] = useState<string | undefined>();
 
   const handleLogout = async () => {
     localStorage.removeItem('auth_password');
@@ -127,12 +128,6 @@ function HomeContent() {
         <Group h="100%" px="md" justify="space-between">
           <Title order={2}>🌐 Domain Parser</Title>
           <Group>
-            <Button
-              leftSection={<IconUpload size={18} />}
-              onClick={() => setUploadModalOpened(true)}
-            >
-              Загрузить CSV
-            </Button>
             <Menu shadow="md" width={250}>
               <Menu.Target>
                 <Button variant="light" leftSection={<IconTools size={18} />}>
@@ -172,14 +167,21 @@ function HomeContent() {
 
       <AppShell.Main>
         <DomainsContainer 
-          onOpenUpload={() => setUploadModalOpened(true)}
+          onOpenUpload={(query) => {
+            setExistingUserQuery(query);
+            setUploadModalOpened(true);
+          }}
         />
       </AppShell.Main>
 
       <UploadModal
         opened={uploadModalOpened}
-        onClose={() => setUploadModalOpened(false)}
+        onClose={() => {
+          setUploadModalOpened(false);
+          setExistingUserQuery(undefined);
+        }}
         onSuccess={handleUploadSuccess}
+        existingUserQuery={existingUserQuery}
       />
     </AppShell>
   );
